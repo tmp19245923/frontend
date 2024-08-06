@@ -12,6 +12,8 @@ declare module 'express-session' {
   }
 }
 
+// feature 001
+
 const app = express();
 const publicRouter = express.Router();
 const privateRouter = express.Router();
