@@ -1,3 +1,9 @@
+declare module 'express-session' {
+  interface SessionData {
+    user: { email: string };
+  }
+}
+
 type Ticket = {
   userId: number;
   id: number;

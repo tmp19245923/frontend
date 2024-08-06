@@ -1,66 +1,60 @@
 import * as express from 'express';
-import * as http from 'http';
-import * as bodyParser from 'body-parser';
 import * as session from 'express-session';
+import * as path from 'path';
 
 import { tickets, users } from './data';
 import type { Tickets, Users } from './types';
 
-declare module 'express-session' {
-  interface SessionData {
-    user: string | null;
-  }
-}
-
-// feature 001
-
 const app = express();
 const publicRouter = express.Router();
 const privateRouter = express.Router();
+const clientRouter = express.Router();
 
-const httpPort = 3000;
+const port = 3000;
+
+// process.env.DEBUG = 'express-session';
 
 const checkObj = (obj: object) => Object.keys(obj).length !== 0;
 
 const isAuthenticated = (req, res, next) => {
-  console.log(req.session.user);
+  console.log('user', req.session.user);
   if (req.session.user === null || req.session.user === undefined) {
-    res.status(401).json({
-      error: 'Forbidden',
+    return res.status(401).json({
+      error: 'Unauthorized',
     });
-    next();
   } else {
-    res.status(200).json({
-      error: 'ok',
-    });
     next('route');
   }
 };
 
-app.all('/*', function (req, res, next) {
+// function isAuthenticated(req, res, next) {
+//   if (req.session.user) next();
+//   else next('route');
+// }
+
+app.use(
+  session({
+    secret: 'megaSecret',
+    resave: true,
+    saveUninitialized: true,
+  })
+);
+
+app.all('/*', (req, res, next) => {
   res.set('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Origin', req.headers.origin);
   res.header('Access-Control-Allow-Headers', 'X-Requested-With');
   next();
 });
 
-app.use(bodyParser.json());
-
-app.use(
-  session({
-    secret: 'mega-secret',
-    resave: false,
-    saveUninitialized: true,
-    cookie: { httpOnly: true },
-  })
-);
+app.use(express.json());
 
 app.use((req, _res, next) => {
   const { body, query, originalUrl } = req;
   const logData: {
     path: string;
     time: number;
-    user?: string | null;
+    user?: { email: string } | null;
     body?: string;
     query?: typeof query;
   } = {
@@ -76,11 +70,15 @@ app.use((req, _res, next) => {
     logData.query = query;
   }
 
-  logData.user = req.session.user;
+  logData.user = req.session.user || null;
 
   console.log(JSON.stringify(logData, null, 2));
 
   next();
+});
+
+clientRouter.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, './static/main.html'));
 });
 
 publicRouter.post('/login', (req, res, next) => {
@@ -108,7 +106,9 @@ publicRouter.post('/login', (req, res, next) => {
   }
 
   if (body.email === 'admin@example.com' && body.password === 'qwerty') {
-    res.json({
+    req.session.user = { email: body.email };
+
+    return res.json({
       role: 'admin',
     });
   } else {
@@ -117,32 +117,19 @@ publicRouter.post('/login', (req, res, next) => {
     });
   }
 
-  req.session.regenerate((err) => {
-    if (err) next(err);
-
-    console.log('login');
-    req.session.user = body.email;
-
-    req.session.save((err) => {
-      if (err) return next(err);
-    });
-  });
-
   res.status(500).json({
     error: 'Server error',
   });
 });
 
 privateRouter.post('/logout', (req, res, next) => {
-  console.log('logout');
-
-  req.session.user = null;
-  req.session.save((err) => {
-    if (err) next(err);
-
-    req.session.regenerate((err) => {
-      if (err) next(err);
-    });
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Error destroying session:', err);
+      res.json({ error: 'Error destroying session' });
+    } else {
+      res.json({ ok: 'Session destroyed' });
+    }
   });
 });
 
@@ -219,9 +206,10 @@ privateRouter.get('/dictionary/users', (_req, res) => {
   res.json(result);
 });
 
-app.use('/api/', publicRouter);
-app.use('/api/', isAuthenticated, privateRouter);
+app.use('/', clientRouter);
+app.use('/api', publicRouter);
+app.use('/api', isAuthenticated, privateRouter);
 
-http.createServer(app).listen(httpPort, () => {
-  console.log(`http://localhost:${httpPort}`);
+app.listen(port, () => {
+  console.log(`http://localhost:${port}`);
 });
