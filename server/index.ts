@@ -12,8 +12,6 @@ const clientRouter = express.Router();
 
 const port = 3000;
 
-// process.env.DEBUG = 'express-session';
-
 const checkObj = (obj: object) => Object.keys(obj).length !== 0;
 
 const isAuthenticated = (req, res, next) => {
@@ -26,11 +24,6 @@ const isAuthenticated = (req, res, next) => {
     next('route');
   }
 };
-
-// function isAuthenticated(req, res, next) {
-//   if (req.session.user) next();
-//   else next('route');
-// }
 
 app.use(
   session({
@@ -78,7 +71,7 @@ app.use((req, _res, next) => {
 });
 
 clientRouter.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, './static/main.html'));
+  res.send('mock server');
 });
 
 publicRouter.post('/login', (req, res, next) => {
