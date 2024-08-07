@@ -14,8 +14,8 @@
 Аунтификация реализована через cookie, сессии хранятся в оперативке сервера.
 Данные для входа 
 
-- `email` `admin@example.com`
-- `password` `qwerty`
+- email `admin@example.com`
+- password `qwerty`
 
 1. форма состоит из 2х полей - `email` и `password`
 1. для поля `email` сделать валидацию
